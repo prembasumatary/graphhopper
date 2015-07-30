@@ -18,15 +18,13 @@
 package com.graphhopper.util;
 
 import com.graphhopper.routing.util.EncodingManager;
-import com.graphhopper.storage.GraphBuilder;
-import com.graphhopper.storage.Graph;
-import com.graphhopper.storage.LevelGraph;
-import com.graphhopper.storage.NodeAccess;
+import com.graphhopper.storage.*;
+
 import static org.junit.Assert.*;
+
 import org.junit.Test;
 
 /**
- *
  * @author Peter Karich
  */
 public class GHUtilityTest
@@ -108,10 +106,10 @@ public class GHUtilityTest
         Graph g = initUnsorted(createGraph());
         EdgeIteratorState eb = g.edge(0, 0, 11, true);
 
-        LevelGraph lg = new GraphBuilder(encodingManager).levelGraphCreate();
+        CHGraph lg = new GraphBuilder(encodingManager).chGraphCreate();
         GHUtility.copyTo(g, lg);
 
-        assertEquals(g.getAllEdges().getCount(), lg.getAllEdges().getCount());
+        assertEquals(g.getAllEdges().getMaxId(), lg.getAllEdges().getMaxId());
     }
 
     @Test
@@ -120,8 +118,11 @@ public class GHUtilityTest
         Graph g = initUnsorted(createGraph());
         EdgeIteratorState eb = g.edge(6, 5, 11, true);
         eb.setWayGeometry(Helper.createPointList(12, 10, -1, 3));
-        LevelGraph lg = new GraphBuilder(encodingManager).levelGraphCreate();
+
+        GraphHopperStorage newStore = new GraphBuilder(encodingManager).setCHGraph(true).create();
+        CHGraph lg = newStore.getGraph(CHGraph.class);
         GHUtility.copyTo(g, lg);
+        newStore.freeze();
 
         eb = GHUtility.getEdge(lg, 5, 6);
         assertEquals(Helper.createPointList(-1, 3, 12, 10), eb.fetchWayGeometry(0));

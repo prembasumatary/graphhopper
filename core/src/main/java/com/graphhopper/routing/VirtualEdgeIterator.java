@@ -15,18 +15,16 @@
  */
 package com.graphhopper.routing;
 
-import com.graphhopper.util.EdgeIterator;
-import com.graphhopper.util.EdgeIteratorState;
-import com.graphhopper.util.EdgeSkipIterState;
-import com.graphhopper.util.PointList;
+import com.graphhopper.util.*;
+
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- *
  * @author Peter Karich
  */
-class VirtualEdgeIterator implements EdgeIterator, EdgeSkipIterState {
+class VirtualEdgeIterator implements EdgeIterator, CHEdgeIteratorState
+{
     private final List<EdgeIteratorState> edges;
     private int current;
 
@@ -134,6 +132,12 @@ class VirtualEdgeIterator implements EdgeIterator, EdgeSkipIterState {
     }
 
     @Override
+    public boolean getBoolean(int key, boolean reverse, boolean _default)
+    {
+        return edges.get(current).getBoolean(key, reverse, _default);
+    }
+
+    @Override
     public String toString()
     {
         return edges.toString();
@@ -161,18 +165,18 @@ class VirtualEdgeIterator implements EdgeIterator, EdgeSkipIterState {
     public boolean isShortcut()
     {
         EdgeIteratorState edge = edges.get(current);
-        return edge instanceof EdgeSkipIterState && ((EdgeSkipIterState) edge).isShortcut();
+        return edge instanceof CHEdgeIteratorState && ((CHEdgeIteratorState) edge).isShortcut();
     }
 
     @Override
     public double getWeight()
     {
         // will be called only from PreparationWeighting and if isShortcut is true
-        return ((EdgeSkipIterState) edges.get(current)).getWeight();
+        return ((CHEdgeIteratorState) edges.get(current)).getWeight();
     }
 
     @Override
-    public EdgeSkipIterState setWeight( double weight )
+    public CHEdgeIteratorState setWeight( double weight )
     {
         throw new UnsupportedOperationException("Not supported.");
     }
@@ -194,5 +198,5 @@ class VirtualEdgeIterator implements EdgeIterator, EdgeSkipIterState {
     {
         throw new UnsupportedOperationException("Not supported.");
     }
-    
+
 }

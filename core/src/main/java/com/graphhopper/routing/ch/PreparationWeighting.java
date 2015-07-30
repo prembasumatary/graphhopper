@@ -20,12 +20,13 @@ package com.graphhopper.routing.ch;
 
 import com.graphhopper.routing.util.Weighting;
 import com.graphhopper.util.EdgeIteratorState;
-import com.graphhopper.util.EdgeSkipIterState;
+import com.graphhopper.util.CHEdgeIteratorState;
 
 /**
- * Used in CH preparation and therefor assumed that all edges are of type EdgeSkipIterState
- * <p>
+ * Used in CH preparation and therefor assumed that all edges are of type CHEdgeIteratorState
+ * <p/>
  * @author Peter Karich
+ * @see PrepareContractionHierarchies
  */
 public class PreparationWeighting implements Weighting
 {
@@ -45,13 +46,11 @@ public class PreparationWeighting implements Weighting
     @Override
     public double calcWeight( EdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId )
     {
-        if (edgeState instanceof EdgeSkipIterState)
-        {
-            EdgeSkipIterState tmp = (EdgeSkipIterState) edgeState;
-            if (tmp.isShortcut())
-                // if a shortcut is in both directions the weight is identical => no need for 'reverse'
-                return tmp.getWeight();
-        }
+        CHEdgeIteratorState tmp = (CHEdgeIteratorState) edgeState;
+        if (tmp.isShortcut())
+            // if a shortcut is in both directions the weight is identical => no need for 'reverse'
+            return tmp.getWeight();
+
         return userWeighting.calcWeight(edgeState, reverse, prevOrNextEdgeId);
     }
 

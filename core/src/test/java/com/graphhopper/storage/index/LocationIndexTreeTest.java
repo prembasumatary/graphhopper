@@ -26,12 +26,14 @@ import com.graphhopper.storage.RAMDirectory;
 import com.graphhopper.util.*;
 import com.graphhopper.util.shapes.GHPoint;
 import gnu.trove.set.hash.TIntHashSet;
+
 import java.util.Arrays;
+
 import org.junit.Test;
+
 import static org.junit.Assert.*;
 
 /**
- *
  * @author Peter Karich
  */
 public class LocationIndexTreeTest extends AbstractLocationIndexTester
@@ -43,7 +45,7 @@ public class LocationIndexTreeTest extends AbstractLocationIndexTester
     public LocationIndexTree createIndex( Graph g, int resolution )
     {
         if (resolution < 0)
-            resolution = 500000;        
+            resolution = 500000;
         return (LocationIndexTree) createIndexNoPrepare(g, resolution).prepareIndex();
     }
 
@@ -68,7 +70,7 @@ public class LocationIndexTreeTest extends AbstractLocationIndexTester
     // 2---/---/
     Graph createTestGraph()
     {
-        Graph graph = createGraph(new RAMDirectory(), encodingManager, false);
+        Graph graph = createGHStorage(new RAMDirectory(), encodingManager, false);
         NodeAccess na = graph.getNodeAccess();
         na.setNode(0, 0.5, -0.5);
         na.setNode(1, -0.5, -0.5);
@@ -132,7 +134,7 @@ public class LocationIndexTreeTest extends AbstractLocationIndexTester
         // The optimization if(dist > normedHalf) => feed nodeA or nodeB
         // although this reduces chance of nodes outside of the tile
         // in practice it even increases file size!?
-        // Is this due to the LevelGraph disconnect problem?
+        // Is this due to the CHGraph disconnect problem?
 //        set.clear();
 //        set.add(4);
 //        assertEquals(set, index.findNetworkEntries(-0.7, 1.5));
@@ -214,7 +216,7 @@ public class LocationIndexTreeTest extends AbstractLocationIndexTester
     @Test
     public void testMoreReal()
     {
-        Graph graph = createGraph(new EncodingManager("CAR"));
+        Graph graph = createGHStorage(new EncodingManager("CAR"));
         NodeAccess na = graph.getNodeAccess();
         na.setNode(1, 51.2492152, 9.4317166);
         na.setNode(0, 52, 9);
@@ -239,7 +241,7 @@ public class LocationIndexTreeTest extends AbstractLocationIndexTester
     //  |
     private Graph createTestGraphWithWayGeometry()
     {
-        Graph graph = createGraph(encodingManager);
+        Graph graph = createGHStorage(encodingManager);
         NodeAccess na = graph.getNodeAccess();
         na.setNode(0, 0.5, -0.5);
         na.setNode(1, -0.5, -0.5);
@@ -271,7 +273,7 @@ public class LocationIndexTreeTest extends AbstractLocationIndexTester
     @Test
     public void testFindingWayGeometry()
     {
-        Graph g = createGraph(encodingManager);
+        Graph g = createGHStorage(encodingManager);
         NodeAccess na = g.getNodeAccess();
         na.setNode(10, 51.2492152, 9.4317166);
         na.setNode(20, 52, 9);
@@ -305,7 +307,7 @@ public class LocationIndexTreeTest extends AbstractLocationIndexTester
     // see testgraph2.jpg
     Graph createTestGraph2()
     {
-        Graph graph = createGraph(new RAMDirectory(), encodingManager, false);
+        Graph graph = createGHStorage(new RAMDirectory(), encodingManager, false);
         NodeAccess na = graph.getNodeAccess();
         na.setNode(8, 49.94553, 11.57214);
         na.setNode(9, 49.94553, 11.57314);

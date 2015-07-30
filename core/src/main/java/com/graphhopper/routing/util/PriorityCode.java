@@ -20,12 +20,11 @@ package com.graphhopper.routing.util;
 /**
  * Used to store a priority value in the way flags of an edge. Used in combination with
  * PriorityWeighting
- * <p>
+ * <p/>
  * @author Peter Karich
  */
 public enum PriorityCode
 {
-    WORST(0),
     AVOID_AT_ALL_COSTS(1),
     REACH_DEST(2),
     AVOID_IF_POSSIBLE(3),

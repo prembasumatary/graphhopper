@@ -18,10 +18,16 @@
  */
 package com.graphhopper.util;
 
+import com.graphhopper.storage.CHGraph;
+
 /**
+ * The state returned from the EdgeIterator of a CHGraph
+ * <p>
  * @author Peter Karich
+ * @see CHGraph
+ * @see CHEdgeIterator
  */
-public interface EdgeSkipIterState extends EdgeIteratorState
+public interface CHEdgeIteratorState extends EdgeIteratorState
 {
     int getSkippedEdge1();
 
@@ -31,7 +37,7 @@ public interface EdgeSkipIterState extends EdgeIteratorState
 
     boolean isShortcut();
 
-    EdgeSkipIterState setWeight( double weight );
+    CHEdgeIteratorState setWeight( double weight );
 
     double getWeight();
 }
