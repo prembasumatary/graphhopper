@@ -1,9 +1,9 @@
 /*
- *  Licensed to GraphHopper and Peter Karich under one or more contributor
+ *  Licensed to GraphHopper GmbH under one or more contributor
  *  license agreements. See the NOTICE file distributed with this work for 
  *  additional information regarding copyright ownership.
  * 
- *  GraphHopper licenses this file to you under the Apache License, 
+ *  GraphHopper GmbH licenses this file to you under the Apache License, 
  *  Version 2.0 (the "License"); you may not use this file except in 
  *  compliance with the License. You may obtain a copy of the License at
  * 
@@ -20,45 +20,44 @@ package com.graphhopper.storage;
 import com.graphhopper.routing.QueryGraph;
 import com.graphhopper.routing.ch.PrepareEncoder;
 import com.graphhopper.routing.util.*;
+import com.graphhopper.routing.weighting.FastestWeighting;
+import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.storage.index.QueryResult;
 import com.graphhopper.util.*;
 import com.graphhopper.util.shapes.BBox;
+import org.junit.Test;
+
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.Assert.*;
-
-import org.junit.Test;
 
 /**
  * @author Peter Karich
  */
-public class GraphHopperStorageCHTest extends GraphHopperStorageTest
-{
-    protected CHGraph getGraph( GraphHopperStorage ghStorage )
-    {
+public class GraphHopperStorageCHTest extends GraphHopperStorageTest {
+    protected CHGraph getGraph(GraphHopperStorage ghStorage) {
         return ghStorage.getGraph(CHGraph.class);
     }
 
     @Override
-    public GraphHopperStorage newGHStorage( Directory dir, boolean is3D )
-    {
-        return new GraphHopperStorage(true, dir, encodingManager, is3D, new GraphExtension.NoOpExtension());
+    public GraphHopperStorage newGHStorage(Directory dir, boolean is3D) {
+        return new GraphHopperStorage(Arrays.asList(new FastestWeighting(carEncoder)), dir, encodingManager, is3D, new GraphExtension.NoOpExtension());
     }
 
     @Test
-    public void testCannotBeLoadedWithNormalGraphHopperStorageClass()
-    {
+    public void testCannotBeLoadedWithNormalGraphHopperStorageClass() {
         graph = newGHStorage(new RAMDirectory(defaultGraphLoc, true), false).create(defaultSize);
         graph.flush();
         graph.close();
 
         graph = new GraphBuilder(encodingManager).setLocation(defaultGraphLoc).setMmap(false).setStore(true).create();
-        try
-        {
+        try {
             graph.loadExisting();
-            assertTrue(false);
-        } catch (Exception ex)
-        {
+            fail();
+        } catch (Exception ex) {
         }
 
         graph = newGHStorage(new RAMDirectory(defaultGraphLoc, true), false);
@@ -68,8 +67,7 @@ public class GraphHopperStorageCHTest extends GraphHopperStorageTest
     }
 
     @Test
-    public void testPrios()
-    {
+    public void testPrios() {
         graph = createGHStorage();
         CHGraph g = getGraph(graph);
         g.getNodeAccess().ensureNode(30);
@@ -85,8 +83,7 @@ public class GraphHopperStorageCHTest extends GraphHopperStorageTest
     }
 
     @Test
-    public void testEdgeFilter()
-    {
+    public void testEdgeFilter() {
         graph = createGHStorage();
         CHGraph g = getGraph(graph);
         g.edge(0, 1, 10, true);
@@ -116,8 +113,7 @@ public class GraphHopperStorageCHTest extends GraphHopperStorageTest
     }
 
     @Test
-    public void testDisconnectEdge()
-    {
+    public void testDisconnectEdge() {
         graph = createGHStorage();
         CHGraphImpl lg = (CHGraphImpl) getGraph(graph);
 
@@ -168,8 +164,7 @@ public class GraphHopperStorageCHTest extends GraphHopperStorageTest
     }
 
     @Test
-    public void testGetWeight()
-    {
+    public void testGetWeight() {
         graph = createGHStorage();
         CHGraphImpl g = (CHGraphImpl) getGraph(graph);
         assertFalse(g.edge(0, 1).isShortcut());
@@ -191,26 +186,32 @@ public class GraphHopperStorageCHTest extends GraphHopperStorageTest
         sc1.setFlags(flags);
         sc1.setWeight(100.123);
         assertEquals(100.123, sc1.getWeight(), 1e-3);
-        assertTrue(carEncoder.isForward(sc1.getFlags()));
-        assertTrue(carEncoder.isBackward(sc1.getFlags()));
+        assertTrue(sc1.isForward(carEncoder));
+        assertTrue(sc1.isBackward(carEncoder));
 
         flags = carEncoder.setProperties(10, false, true);
         sc1.setFlags(flags);
         sc1.setWeight(100.123);
         assertEquals(100.123, sc1.getWeight(), 1e-3);
-        assertFalse(carEncoder.isForward(sc1.getFlags()));
-        assertTrue(carEncoder.isBackward(sc1.getFlags()));
+        assertFalse(sc1.isForward(carEncoder));
+        assertTrue(sc1.isBackward(carEncoder));
+
+        // check min weight
+        sc1.setFlags(flags);
+        sc1.setWeight(1e-5);
+        assertEquals(1e-3, sc1.getWeight(), 1e-10);
     }
 
     @Test
-    public void testGetWeightIfAdvancedEncoder()
-    {
+    public void testGetWeightIfAdvancedEncoder() {
         FlagEncoder customEncoder = new Bike2WeightFlagEncoder();
-        graph = new GraphBuilder(new EncodingManager(customEncoder)).setCHGraph(true).create();
-        graph.edge(0, 2);
-        graph.freeze();
+        EncodingManager em = new EncodingManager(customEncoder);
+        FastestWeighting weighting = new FastestWeighting(customEncoder);
+        GraphHopperStorage ghStorage = new GraphBuilder(em).setCHGraph(weighting).create();
+        ghStorage.edge(0, 2);
+        ghStorage.freeze();
 
-        CHGraphImpl lg = (CHGraphImpl) graph.getGraph(CHGraph.class);
+        CHGraphImpl lg = (CHGraphImpl) ghStorage.getGraph(CHGraph.class, weighting);
         CHEdgeIteratorState sc1 = lg.shortcut(0, 1);
         long flags = customEncoder.setProperties(10, false, true);
         sc1.setFlags(flags);
@@ -229,8 +230,7 @@ public class GraphHopperStorageCHTest extends GraphHopperStorageTest
     }
 
     @Test
-    public void testQueryGraph()
-    {
+    public void testQueryGraph() {
         graph = createGHStorage();
         CHGraph chGraph = getGraph(graph);
         NodeAccess na = chGraph.getNodeAccess();
@@ -263,8 +263,7 @@ public class GraphHopperStorageCHTest extends GraphHopperStorageTest
         assertEquals(GHUtility.asSet(1, fromRes.getClosestNode()), GHUtility.getNeighbors(explorer.setBaseNode(toRes.getClosestNode())));
     }
 
-    QueryResult createQR( double lat, double lon, int wayIndex, EdgeIteratorState edge )
-    {
+    QueryResult createQR(double lat, double lon, int wayIndex, EdgeIteratorState edge) {
         QueryResult res = new QueryResult(lat, lon);
         res.setClosestEdge(edge);
         res.setWayIndex(wayIndex);
@@ -275,12 +274,11 @@ public class GraphHopperStorageCHTest extends GraphHopperStorageTest
 
     @Test
     @Override
-    public void testSave_and_Freeze() throws IOException
-    {
+    public void testSave_and_Freeze() throws IOException {
         // belongs to each other
         super.testSave_and_Freeze();
         graph.close();
-        
+
         // test freeze and shortcut creation & loading
         graph = newGHStorage(new RAMDirectory(defaultGraphLoc, true), true).
                 create(defaultSize);
@@ -319,11 +317,11 @@ public class GraphHopperStorageCHTest extends GraphHopperStorageTest
         assertTrue(iter.next());
         assertFalse(iter.isShortcut());
         assertEquals(0, iter.getEdge());
-        
+
         assertTrue(iter.next());
         assertFalse(iter.isShortcut());
         assertEquals(1, iter.getEdge());
-        
+
         assertTrue(iter.next());
         assertTrue(iter.isShortcut());
         assertEquals(2, iter.getEdge());
@@ -331,8 +329,7 @@ public class GraphHopperStorageCHTest extends GraphHopperStorageTest
     }
 
     @Test
-    public void testSimpleShortcutCreationAndTraversal()
-    {
+    public void testSimpleShortcutCreationAndTraversal() {
         graph = createGHStorage();
         graph.edge(1, 3, 10, true);
         graph.edge(3, 4, 10, true);
@@ -345,5 +342,91 @@ public class GraphHopperStorageCHTest extends GraphHopperStorageTest
         // iteration should result in same nodes even if reusing the iterator
         assertEquals(GHUtility.asSet(3, 4), GHUtility.getNeighbors(vehicleOutExplorer.setBaseNode(1)));
         assertEquals(GHUtility.asSet(3, 4), GHUtility.getNeighbors(vehicleOutExplorer.setBaseNode(1)));
+    }
+
+    @Test
+    public void testAddShortcutSkippedEdgesWriteRead() {
+        graph = createGHStorage();
+        final EdgeIteratorState edge1 = graph.edge(1, 3, 10, true);
+        final EdgeIteratorState edge2 = graph.edge(3, 4, 10, true);
+        graph.freeze();
+
+        CHGraph lg = graph.getGraph(CHGraph.class);
+        lg.shortcut(1, 4);
+
+        AllCHEdgesIterator iter = lg.getAllEdges();
+        iter.next();
+        iter.next();
+        iter.next();
+        assertTrue(iter.isShortcut());
+        iter.setSkippedEdges(edge1.getEdge(), edge2.getEdge());
+        assertEquals(edge1.getEdge(), iter.getSkippedEdge1());
+        assertEquals(edge2.getEdge(), iter.getSkippedEdge2());
+    }
+
+    @Test
+    public void testAddShortcutSkippedEdgesWriteRead_writeWithCHEdgeIterator() {
+        graph = createGHStorage();
+        final EdgeIteratorState edge1 = graph.edge(1, 3, 10, true);
+        final EdgeIteratorState edge2 = graph.edge(3, 4, 10, true);
+        graph.freeze();
+
+        CHGraph lg = graph.getGraph(CHGraph.class);
+        CHEdgeIteratorState shortcut = lg.shortcut(1, 4);
+        shortcut.setSkippedEdges(edge1.getEdge(), edge2.getEdge());
+
+        AllCHEdgesIterator iter = lg.getAllEdges();
+        iter.next();
+        iter.next();
+        iter.next();
+        assertTrue(iter.isShortcut());
+        assertEquals(edge1.getEdge(), iter.getSkippedEdge1());
+        assertEquals(edge2.getEdge(), iter.getSkippedEdge2());
+    }
+
+    @Test
+    public void testShortcutCreationAndAccessForManyVehicles() {
+        FlagEncoder tmpCar = new CarFlagEncoder();
+        FlagEncoder tmpBike = new Bike2WeightFlagEncoder();
+        EncodingManager em = new EncodingManager(tmpCar, tmpBike);
+        List<Weighting> chWeightings = new ArrayList<Weighting>();
+        chWeightings.add(new FastestWeighting(tmpCar));
+        chWeightings.add(new FastestWeighting(tmpBike));
+
+        graph = new GraphHopperStorage(chWeightings, new RAMDirectory(), em, false, new GraphExtension.NoOpExtension()).create(1000);
+        graph.edge(0, 1).setDistance(10).setFlags(tmpCar.setProperties(100, true, true) | tmpBike.setProperties(10, true, true));
+        graph.edge(1, 2).setDistance(10).setFlags(tmpCar.setProperties(100, true, true) | tmpBike.setProperties(10, true, true));
+
+        graph.freeze();
+
+        CHGraph carCHGraph = graph.getGraph(CHGraph.class, chWeightings.get(0));
+        // enable forward directions for car
+        EdgeIteratorState carSC02 = carCHGraph.shortcut(0, 2).setWeight(10).setFlags(PrepareEncoder.getScFwdDir()).setDistance(20);
+
+        CHGraph bikeCHGraph = graph.getGraph(CHGraph.class, chWeightings.get(1));
+        // enable both directions for bike
+        EdgeIteratorState bikeSC02 = bikeCHGraph.shortcut(0, 2).setWeight(10).setFlags(PrepareEncoder.getScDirMask()).setDistance(20);
+
+        // assert car CH graph
+        assertTrue(carCHGraph.getEdgeIteratorState(carSC02.getEdge(), 2).isForward(tmpCar));
+        assertFalse(carCHGraph.getEdgeIteratorState(carSC02.getEdge(), 2).isBackward(tmpCar));
+
+        // throw exception for wrong encoder
+        try {
+            assertFalse(carCHGraph.getEdgeIteratorState(carSC02.getEdge(), 2).isForward(tmpBike));
+            assertTrue(false);
+        } catch (AssertionError ex) {
+        }
+
+        // assert bike CH graph
+        assertTrue(bikeCHGraph.getEdgeIteratorState(bikeSC02.getEdge(), 2).isForward(tmpBike));
+        assertTrue(bikeCHGraph.getEdgeIteratorState(bikeSC02.getEdge(), 2).isBackward(tmpBike));
+
+        // throw exception for wrong encoder
+        try {
+            assertFalse(bikeCHGraph.getEdgeIteratorState(bikeSC02.getEdge(), 2).isBackward(tmpCar));
+            assertTrue(false);
+        } catch (AssertionError ex) {
+        }
     }
 }
